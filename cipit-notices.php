@@ -3,7 +3,7 @@
  * Plugin Name: CIPIT Custom Notices Board
  * Plugin URI: https://github.com/Muchwat/cipit-notices-board
  * Description: Implements a structured, responsive notice board using a custom post type, taxonomy, and blog-matching card design.
- * Version: 1.0.2
+ * Version: 1.0.3
  * Author: Kevin Muchwat
  * Author URI: https://github.com/Muchwat
  * Text Domain: cipit-notices
@@ -27,7 +27,7 @@ function cipit_register_notice_cpt()
     );
 
     $args = array(
-        'label' => __('Notices', 'cipit-notices'),
+        'label' => __('CIPIT Notices', 'cipit-notices'),
         'public' => true,
         'menu_icon' => 'dashicons-megaphone',
         'supports' => array('title', 'editor'),
@@ -164,6 +164,7 @@ function cipit_notices_shortcode($atts)
     $atts = shortcode_atts([
         'count' => 3,
         'title' => 'Latest Notices',
+        'description' => '', // <-- ADDED: New description attribute
         'category' => '',
     ], $atts);
 
@@ -187,11 +188,186 @@ function cipit_notices_shortcode($atts)
 
     $q = new WP_Query($query_args);
 
+    if (!$q->have_posts()) {
+        return '';
+    }
+
     ob_start();
     ?>
+    <style>
+        /* Section */
+        .latest-news-section {
+            padding-top: var(--section-padding);
+            text-align: center;
+        }
 
+        .latest-news-section h2 {
+            font-size: var(--h2-font-size);
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 2rem;
+            display: inline-block;
+            padding-bottom: 5px;
+            border-bottom: 3px solid var(--primary-color);
+        }
+
+        /* Style for the description */
+        .latest-news-section .section-description {
+            font-size: 1.1rem;
+            color: var(--dark-gray);
+            margin-top: 0;
+            margin-bottom: var(--section-padding-small);
+            max-width: 800px;
+            /* Limit width for readability */
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.5;
+        }
+
+
+        /* Grid layout */
+        .news-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+        }
+
+        /* Card */
+        .news-card {
+            background: #fff;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            border: 1px solid #eee;
+            box-shadow: var(--card-shadow);
+            transition: var(--card-transition);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border-top: 5px solid var(--primary-color);
+        }
+
+        .news-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+        }
+
+        /* HEADER: ICON LEFT + TAG RIGHT */
+        .news-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        /* Icon */
+        .news-icon {
+            font-size: 2rem;
+            color: var(--primary-color);
+            opacity: 0.9;
+            flex-shrink: 0;
+        }
+
+        /* Category tag using THEME STYLE (.post-tags a) */
+        .news-category {
+            /* Matching .tag-btn style for pill-tag look */
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 0.25rem 0.9rem;
+            border-radius: 30px;
+            /* Use button-radius for a more rounded pill, matching .tag-btn */
+            font-size: 0.85rem;
+            color: var(--secondary-color);
+            /* Use secondary color for text */
+            font-weight: 600;
+
+        }
+
+        /* Content alignment */
+        .news-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            flex-grow: 1;
+        }
+
+        .news-card h3 {
+            font-size: var(--h4-font-size);
+            color: var(--primary-color);
+            margin: 0;
+            font-weight: 700;
+            text-align: left;
+        }
+
+        /* Justified text without ugly spacing */
+        .news-card .notice-description {
+            font-size: 1rem;
+            color: var(--dark-gray);
+            line-height: 1.55;
+            text-align: justify;
+            text-align-last: left;
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        /* Button */
+        .news-card .read-more {
+            display: inline-flex;
+            align-items: center;
+            background: var(--secondary-color);
+            color: #fff;
+            padding: .7rem 1.8rem;
+            border-radius: var(--button-radius);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-top: 1rem;
+            align-self: flex-start;
+            transition: var(--card-transition);
+        }
+
+        .news-card .read-more:hover {
+            background: var(--primary-hover);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(181, 5, 9, 0.25);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .news-list {
+                grid-template-columns: 1fr;
+            }
+
+            .news-card {
+                padding: 1.5rem;
+            }
+
+            .news-icon {
+                font-size: 2rem;
+            }
+
+            .news-header-row {
+                gap: 0.6rem;
+            }
+
+            .news-card h3 {
+                font-size: calc(var(--h4-font-size) * 1.05);
+            }
+
+            .news-card .read-more {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
     <section class="latest-news-section">
         <h2><?php echo esc_html($atts['title']); ?></h2>
+
+        <?php
+        // Display the description if it's set
+        if (!empty($atts['description'])): ?>
+            <p class="section-description"><?php echo esc_html($atts['description']); ?></p>
+        <?php endif; ?>
 
         <div class="news-list">
 
@@ -238,189 +414,3 @@ function cipit_notices_shortcode($atts)
     return ob_get_clean();
 }
 add_shortcode('cipit_notices', 'cipit_notices_shortcode');
-
-
-/*
-|--------------------------------------------------------------------------
-| 5. BLOG-MATCH CSS (FIXED: Using a dedicated style handle for inline CSS)
-|--------------------------------------------------------------------------
-*/
-/*
-|--------------------------------------------------------------------------
-| 5. BLOG-MATCH CSS (FIXED: Using a dedicated style handle for inline CSS)
-|--------------------------------------------------------------------------
-*/
-function cipit_enqueue_notice_styles()
-{
-
-    global $post;
-    if (!is_a($post, 'WP_Post') || !has_shortcode($post->post_content, 'cipit_notices'))
-        return;
-
-    // 1. Enqueue Font Awesome (The dependency)
-    wp_enqueue_style('fa6', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css', array(), '6.5.2');
-
-    // 2. Register a dedicated style handle for your inline CSS, making it dependent on fa6
-    // The `false` means it won't load a physical CSS file, but it registers the handle.
-    wp_register_style('cipit-notices-style', false, array('fa6'), '1.0.0');
-    wp_enqueue_style('cipit-notices-style');
-
-
-    $css = <<<CSS
-.latest-news-section {
-    padding: var(--section-padding) 0;
-    text-align: center;
-}
-
-.latest-news-section h2 {
-    font-size: var(--h2-font-size);
-    color: var(--primary-color);
-    text-align: center;
-    margin-bottom: var(--section-padding-small);
-    display: inline-block;
-    padding-bottom: 5px;
-    border-bottom: 3px solid var(--primary-color);
-}
-
-/* Grid layout */
-.news-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
-    max-width: 1200px;
-    margin: 3rem auto 0;
-}
-
-/* Card */
-.news-card {
-    background: #fff;
-    border-radius: var(--border-radius);
-    padding: 2rem;
-    border: 1px solid #eee;
-    box-shadow: var(--card-shadow);
-    transition: var(--card-transition);
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    border-top: 5px solid var(--primary-color);
-}
-
-.news-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
-}
-
-/* HEADER: ICON LEFT + TAG RIGHT */
-.news-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-}
-
-/* Icon */
-.news-icon {
-    font-size: 2rem;
-    color: var(--primary-color);
-    opacity: 0.9;
-    flex-shrink: 0;
-}
-
-/* Category tag using THEME STYLE (.post-tags a) */
-.news-category {
-    /* Matching .tag-btn style for pill-tag look */
-    background: #fff;
-    border: 1px solid #ddd;
-    padding: 0.25rem 0.9rem;
-    border-radius: 30px;
-    /* Use button-radius for a more rounded pill, matching .tag-btn */
-    font-size: 0.85rem;
-    color: var(--secondary-color);
-    /* Use secondary color for text */
-    font-weight: 600;
-
-}
-
-/* Content alignment */
-.news-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-    flex-grow: 1;
-}
-
-.news-card h3 {
-    font-size: var(--h4-font-size);
-    color: var(--primary-color);
-    margin: 0;
-    font-weight: 700;
-    text-align: left;
-}
-
-/* Justified text without ugly spacing */
-.news-card .notice-description {
-    font-size: 1rem;
-    color: var(--dark-gray);
-    line-height: 1.55;
-    text-align: justify;
-    text-align-last: left;
-    margin: 0;
-    flex-grow: 1;
-}
-
-/* Button */
-.news-card .read-more {
-    display: inline-flex;
-    align-items: center;
-    background: var(--primary-color);
-    color: #fff;
-    padding: .7rem 1.8rem;
-    border-radius: var(--button-radius);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 1.05rem;
-    margin-top: 1rem;
-    align-self: flex-start;
-    transition: var(--card-transition);
-}
-
-.news-card .read-more:hover {
-    background: var(--primary-hover);
-    transform: translateY(-3px);
-    box-shadow: 0 6px 12px rgba(181, 5, 9, 0.25);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .news-list {
-        grid-template-columns: 1fr;
-    }
-
-    .news-card {
-        padding: 1.5rem;
-    }
-
-    .news-icon {
-        font-size: 2rem;
-    }
-
-    .news-header-row {
-        gap: 0.6rem;
-    }
-
-    .news-card h3 {
-        font-size: calc(var(--h4-font-size) * 1.05);
-    }
-
-    .news-card .read-more {
-        width: 100%;
-        justify-content: center;
-    }
-}
-CSS;
-
-    // 3. Attach the inline CSS to your new handle
-    wp_add_inline_style('cipit-notices-style', $css);
-}
-add_action('wp_enqueue_scripts', 'cipit_enqueue_notice_styles');
-add_action('wp_enqueue_scripts', 'cipit_enqueue_notice_styles');
